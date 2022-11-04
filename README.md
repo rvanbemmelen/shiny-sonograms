@@ -1,2 +1,3 @@
 # shiny-sonograms
-apps to create sonograms in the field and identify olive-backed/tree pipits
+
+R Shiny apps to create sonograms while in the field or identify olive-backed/tree pipits. Heavily using the seewave package.
