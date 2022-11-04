@@ -3,24 +3,18 @@
 ### 04/11/2022 Rob van Bemmelen
 
 ### to-do ####
-# a) embed in wordpress site [seems to be impossible/difficult with free wordpress account...],
-# b) have a nice name for the app,
-# c) options to change the contrasts of the sonogram.
 
-### future checks ####
-# a) Should I change any defaults?
-# b) Number of hours/month: is that OK for a free account? If so, distribute further.
-
-# setwd("/home/rob/Documents/projects/R_script_library/sonogram_app/")
+# a) have a nice name for the app,
+# b) options to change the contrasts of the sonogram?
 
 #### libraries ####
+
 library(shiny)
 library(seewave)
 library(tuneR)
 library(av)
     
 #### options ####
-#options(shiny.maxRequestSize = 30*1024^2) # this would increase the maximum upload file size to 30MB.
 
 # path to temporary wav file
 tmp_path <- file.path(getwd(), "www", "tmp.wav")
@@ -67,7 +61,7 @@ ui <- fluidPage(
 
 #### server ####
 server <- function(input, output) {
-  # read sound file function
+  # function to read sound file ####
   loadAudio <- function(){
     if (is.null(input$wav$datapath))
       return(NULL)
@@ -94,7 +88,7 @@ server <- function(input, output) {
     writeWave(wav, tmp_path, extensible=TRUE)
   }
 
-  # show player
+  # sound player ####
   output$playwav <- renderUI({
     if(is.null(input$wav))
       return(NULL)
@@ -107,7 +101,7 @@ server <- function(input, output) {
     )
   }
   )
-  # make sonogram
+  # sonogram ####
   output$sono <- renderPlot({
     # # check if a sound file has been selected
     if (is.null(input$wav))
@@ -128,7 +122,7 @@ server <- function(input, output) {
     # make spectrogram
     if ( input$clrs=='greys' ) { col.pal <- reverse.gray.colors.1 } else { col.pal <- spectro.colors}
     spectro(w, f=44100, wl=input$wl, ovlp=50, zp=50,
-            collevels=seq(-65,-0,1), palette=col.pal, 
+            collevels=seq(-65, -0, 1), palette=col.pal, 
             flim=input$freqrange, 
             tlim=limt,
             scale=FALSE)
@@ -136,7 +130,7 @@ server <- function(input, output) {
     abline(h=seq(1,19,1), col=2, lty=3)
   })
   
-  # Downloadable png of plot
+  # export sonogram ####
   output$downloadPlot <- downloadHandler(
     filename = function() { paste0("sonogram.jpeg") },
     content = function(file) {
