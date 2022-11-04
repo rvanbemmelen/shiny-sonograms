@@ -1,0 +1,11 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+sonogram_app/www/tmp.wav
+treepipit_app/www/tmp.wav
+*.dcf
+treepipit_app/www/*.dcf
+sonogram_app/www/*.dcf
+treepipit_app/rsconnect
+sonogram_app/rsconnect
