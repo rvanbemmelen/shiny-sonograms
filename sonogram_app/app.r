@@ -6,6 +6,7 @@
 
 # a) have a nice name for the app,
 # b) options to change the contrasts of the sonogram?
+# c) ...
 
 #### libraries ####
 
@@ -15,9 +16,6 @@ library(tuneR)
 library(av)
     
 #### options ####
-
-# path to temporary wav file
-tmp_path <- file.path(getwd(), "www", "tmp.wav")
 
 #### ui ####
 ui <- fluidPage(
@@ -63,40 +61,39 @@ ui <- fluidPage(
 server <- function(input, output) {
   # function to read sound file ####
   loadAudio <- function(){
-    if (is.null(input$wav$datapath))
-      return(NULL)
     # determine format
     form <- substr(input$wav$datapath, nchar(input$wav$datapath)-2, nchar(input$wav$datapath))
+    dir.create("www/", showWarnings = FALSE)
     
     if ( form %in% c('mp3','MP3')) {
       r <- readMP3(input$wav$datapath)  ## MP3 file in working directory
-      writeWave(r, tmp_path, extensible=FALSE)
+      writeWave(r, "www/tmp.wav", extensible=FALSE)
     }
     if ( form %in% c("aac", "m4a", "mp4", "M4A", "MP4")) {
       av_audio_convert(
         input$wav$datapath,
-        tmp_path,
+        "www/tmp.wav",
         channels = 1, total_time = 10)
     }
     if ( form %in% c('wav','WAV')) {
       wav <- readWave(as.character(input$wav$datapath))
     } else {
-      wav <- readWave(tmp_path)
+      wav <- readWave("www/tmp.wav")
+      file.remove("www/tmp.wav")
     }
-    file.remove(tmp_path)
     # write wav file
-    writeWave(wav, tmp_path, extensible=TRUE)
+    writeWave(wav, "www/tmp.wav", extensible=TRUE)
   }
 
   # sound player ####
   output$playwav <- renderUI({
-    if(is.null(input$wav))
+    if (is.null(input$wav$datapath))
       return(NULL)
-    observeEvent(input$wav, loadAudio())
+    loadAudio()
     tags$audio(
       controls = "controls",
       tags$source(
-        src = markdown:::.b64EncodeFile(tmp_path),
+        src = markdown:::.b64EncodeFile("www/tmp.wav"),
         type='audio/wav')
     )
   }
@@ -104,10 +101,10 @@ server <- function(input, output) {
   # sonogram ####
   output$sono <- renderPlot({
     # # check if a sound file has been selected
-    if (is.null(input$wav))
+    if (is.null(input$wav$datapath))
       return(NULL)
-    observeEvent(input$wav, loadAudio())
-    wav <- readWave(tmp_path)
+    loadAudio()
+    wav <- readWave("www/tmp.wav")
     
     # filter the stuff
     w <- ffilter(wav, from=input$filter*1000)
@@ -134,13 +131,10 @@ server <- function(input, output) {
   output$downloadPlot <- downloadHandler(
     filename = function() { paste0("sonogram.jpeg") },
     content = function(file) {
-      
-      # check if a sound file has been selected
-      if (is.null(input$wav))
+      if (is.null(input$wav$datapath))
         return(NULL)
-      # read sound file
-      observeEvent(input$wav, loadAudio())
-      wav <- readWave(tmp_path)
+      loadAudio()
+      wav <- readWave("www/tmp.wav")
       
       # filter stuff
       w <- ffilter(wav, from=input$filter*1000)
