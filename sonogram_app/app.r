@@ -1,6 +1,6 @@
 
 ### Shiny app: create seewave spectrogram/sonogram
-### 04/11/2022 Rob van Bemmelen
+### 20/11/2025 Rob van Bemmelen
 
 ### to-do ####
 
@@ -19,7 +19,7 @@ library(av)
 
 #### ui ####
 ui <- fluidPage(
-  titlePanel(title=div(img(src='inornatus.png', height = 68, width = 68), "Make a sonogram!")),
+  titlePanel(title=div(img(src='inornatus.png', height = 68, width = 68), "Sonomaker!")),
   sidebarLayout(
     sidebarPanel(
       # some text
@@ -32,13 +32,28 @@ ui <- fluidPage(
       ),
  
       h5(""),
-      fileInput(inputId='wav', label='Sound file', accept=c('.wav', '.WAV', '.mp3', '.MP3', '.aac', '.m4a', '.mp4')),
-      sliderInput(inputId="timestart", label="Start time (s)", value=0, min=0, max=10, step=0.1),
-      sliderInput(inputId="duration", label="Duration (s)", value=2, min=0, max=3, step=0.2),
-      sliderInput(inputId="freqrange", label="Frequency range (kHz)", value=c(0,8), min=0, max=16, dragRange=TRUE),
-      sliderInput(inputId="wl", label="Window size for FFT", value=512, min=128, max=2048, step=128),
-      sliderInput(inputId="filter", label="Cutoff for high-pass fiter (kHz)", value=0.5, min=0, max=4, step=0.25),
-      radioButtons(inputId="clrs", label="Colour/greyscale", choices=c('greys', 'colours'))
+      fileInput(
+        inputId = 'wav', label = 'Sound file', 
+        accept = c('.wav', '.WAV', '.mp3', '.MP3', '.aac', '.m4a', '.mp4')),
+      sliderInput(
+        inputId = "timestart", label = "Start time (s)", 
+        value=0, min=0, max=10, step=0.1),
+      sliderInput(
+        inputId = "duration", label = "Duration (s)", 
+        value=2, min=0, max = 3, step = 0.2),
+      sliderInput(
+        inputId = "freqrange", label = "Frequency range (kHz)", 
+        value = c(0,8), min = 0, max = 16, dragRange = TRUE),
+      sliderInput(
+        inputId = "wl", label = "Window size for FFT", 
+        value=512, min = 128, max = 2048, step = 128),
+      sliderInput(
+        inputId = "gamma", label = "Contrast",
+        value = 1.7, min = 1.2, max = 5, step = .1),
+      sliderInput(
+        inputId = "filter", 
+        label = "Cutoff for high-pass fiter (kHz)", 
+        value = 0.5, min = 0, max = 4, step = 0.25)
     ),
     mainPanel(
       # sonogram
@@ -52,13 +67,31 @@ ui <- fluidPage(
       
       # credits
       h6("This app uses the 'seewave' and 'tuneR' packages in R.", align = "right"),
-      h6("Rob van Bemmelen, 19/07/2018", align = "right")
+      h6("Rob van Bemmelen, 20 Nov 2025", align = "right")
     )
   )
 )
 
 #### server ####
 server <- function(input, output) {
+  # function for grey scale
+  grey_palette <- function(n) {
+    x_gamma <- seq(
+      from = 1^input$gamma, 
+      to = 0, 
+      length = n)^(1/input$gamma)
+    gray(x_gamma)
+  }
+  # grey_palette <- function(n) {
+  #   x <- seq(0, 1, length.out = n)
+  #   # Sigmoïde functie
+  #   sigmoid <- function(x, k) {
+  #     1 / (1 + exp(-k * (x - 0.5)))
+  #   }
+  #   vals <- -1 * sigmoid(x, input$gamma) + 1
+  #   gray(vals)
+  # }
+  
   # function to read sound file ####
   loadAudio <- function(){
     # determine format
@@ -100,7 +133,7 @@ server <- function(input, output) {
   )
   # sonogram ####
   output$sono <- renderPlot({
-    # # check if a sound file has been selected
+    # check if a sound file has been selected
     if (is.null(input$wav$datapath))
       return(NULL)
     loadAudio()
@@ -109,22 +142,28 @@ server <- function(input, output) {
     # filter the stuff
     w <- ffilter(wav, from=input$filter*1000)
     
-    #time axis adjustment in case of short recordings
+    # time axis adjustment in case of short recordings
     maxx <- length(wav@left)/wav@samp.rate
-    if ( maxx < (input$timestart+input$duration) ) {
+    if ( maxx < (input$timestart + input$duration) ) {
       limt <- c(input$timestart, maxx-0.05)
     } else {
       limt <- c(input$timestart, input$timestart+input$duration)
     }
+
     # make spectrogram
-    if ( input$clrs=='greys' ) { col.pal <- reverse.gray.colors.1 } else { col.pal <- spectro.colors}
-    spectro(w, f=44100, wl=input$wl, ovlp=50, zp=50,
-            collevels=seq(-65, -0, 1), palette=col.pal, 
-            flim=input$freqrange, 
-            tlim=limt,
-            scale=FALSE)
+    spectro(
+      w, 
+      f = 44100, 
+      wl = input$wl,
+      ovlp = 50, 
+      zp = 50,
+      collevels = seq(-65, -0, 1), 
+      palette = grey_palette, 
+      flim = input$freqrange, 
+      tlim = limt,
+      scale = FALSE)
     # add horizontal dotted lines to help the eye
-    abline(h=seq(1,19,1), col=2, lty=3)
+    abline(h = seq(1, 19, 1), col = 2, lty = 3)
   })
   
   # export sonogram ####
@@ -146,15 +185,26 @@ server <- function(input, output) {
         limt <- c(input$timestart, input$timestart+input$duration)
       }
       
-      jpeg(file, width = 8, height = 5, units = "in", res = 150, quality=100)
+      jpeg(
+        file, 
+        width = 8, 
+        height = 5, 
+        units = "in", 
+        res = 150, 
+        quality = 100)
 
       # make spectrogram
-      if ( input$clrs=='greys' ) { col.pal <- reverse.gray.colors.1 } else { col.pal <- spectro.colors}
-      spectro(w, f=44100, wl=input$wl, ovlp=50, zp=50,
-              collevels=seq(-65,-0,1), palette=col.pal, 
-              flim=input$freqrange, 
-              tlim=limt,
-              scale=FALSE)
+      spectro(
+        w, 
+        f = 44100,
+        wl = input$wl, 
+        ovlp = 50, 
+        zp = 50,
+        collevels=seq(-65,-0,1), 
+        palette = grey_palette, 
+        flim = input$freqrange, 
+        tlim = limt,
+        scale = FALSE)
       abline(h=seq(1,19,1), col=2, lty=3)
       dev.off()
       },
