@@ -14,7 +14,8 @@ library(shiny)
 library(seewave)
 library(tuneR)
 library(av)
-    
+library(base64enc)
+
 #### options ####
 
 #### ui ####
@@ -82,7 +83,7 @@ server <- function(input, output) {
       file.remove("www/tmp.wav")
     }
     # write wav file
-    writeWave(wav, "www/tmp.wav", extensible=TRUE)
+    writeWave(wav, "www/tmp.wav", extensible=FALSE)
   }
 
   # sound player ####
@@ -93,7 +94,7 @@ server <- function(input, output) {
     tags$audio(
       controls = "controls",
       tags$source(
-        src = markdown:::.b64EncodeFile("www/tmp.wav"),
+        src = dataURI(file = "www/tmp.wav", mime = "audio/wav"),
         type='audio/wav')
     )
   }
@@ -118,7 +119,7 @@ server <- function(input, output) {
     }
     # make spectrogram
     if ( input$clrs=='greys' ) { col.pal <- reverse.gray.colors.1 } else { col.pal <- spectro.colors}
-    spectro(w, f=44100, wl=input$wl, ovlp=50, zp=50,
+    spectro(w, wav@samp.rate, wl=input$wl, ovlp=75, zp=50,
             collevels=seq(-65, -0, 1), palette=col.pal, 
             flim=input$freqrange, 
             tlim=limt,
@@ -150,7 +151,7 @@ server <- function(input, output) {
 
       # make spectrogram
       if ( input$clrs=='greys' ) { col.pal <- reverse.gray.colors.1 } else { col.pal <- spectro.colors}
-      spectro(w, f=44100, wl=input$wl, ovlp=50, zp=50,
+      spectro(w, f=wav@samp.rate, wl=input$wl, ovlp=75, zp=50,
               collevels=seq(-65,-0,1), palette=col.pal, 
               flim=input$freqrange, 
               tlim=limt,

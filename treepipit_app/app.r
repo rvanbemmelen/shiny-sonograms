@@ -9,6 +9,8 @@
 library(shiny)
 library(seewave)
 library(tuneR)
+library(av)
+library(base64enc)
 
 # path to temporary wav file
 #file.path(getwd(), "www", "tmp.wav") <- file.path(getwd(), "www", "tmp.wav")
@@ -105,7 +107,7 @@ server <- function(input, output, session) {
       file.remove(file.path(getwd(), "www", "tmp.wav"))
     }
     # write wav file
-    writeWave(wav, file.path(getwd(), "www", "tmp.wav"), extensible=TRUE)
+    writeWave(wav, file.path(getwd(), "www", "tmp.wav"), extensible=FALSE)
   }
   
   # show player
@@ -116,7 +118,7 @@ server <- function(input, output, session) {
     tags$audio(
       controls = "controls",
       tags$source(
-        src = markdown:::.b64EncodeFile(file.path(getwd(), "www", "tmp.wav")),
+        src = dataURI(file = "www/tmp.wav", mime = "audio/wav"),
         type='audio/wav')
     )
   }
@@ -293,7 +295,7 @@ server <- function(input, output, session) {
       }
       
       # draw spectrogram for download
-      spectro(w, f=44100, wl=input$wl, ovlp=50, zp=50,
+      spectro(w, f=wav@samp.rate, wl=input$wl, ovlp=75, zp=50,
               collevels=seq(-65,-0,1), palette=col.pal, 
               flim=input$freqrange, 
               tlim=limt,
