@@ -1,6 +1,6 @@
 
 ### Shiny app: create seewave spectrogram/sonogram
-### 20/11/2025 Rob van Bemmelen
+### 28 Nov 2025 Rob van Bemmelen
 
 ### to-do ####
 
@@ -67,20 +67,42 @@ ui <- fluidPage(
       downloadButton("downloadPlot", "Download sonogram (JPEG)"),
       
       # credits
-      h6("This app uses the 'seewave' and 'tuneR' packages in R.", align = "right"),
-      h6("Rob van Bemmelen, 20 Nov 2025", align = "right")
+      h6("This app uses the seewave, av and tuneR packages in R.", align = "right"),
+      h6("Rob van Bemmelen, 28 Nov 2025", align = "right")
     )
   )
 )
 
 #### server ####
 server <- function(input, output) {
+  # debounce to avoid quick redraws 
+  dbounce <- 1000
+  # timestart, duration freqrange wl gamma filter
+  timestart_react = reactive({
+    input$timestart
+  }) |> shiny::debounce(dbounce)
+  duration_react = reactive({
+    input$duration
+  }) |> shiny::debounce(dbounce)
+  freqrange_react = reactive({
+    input$freqrange
+  }) |> shiny::debounce(dbounce)
+  wl_react = reactive({
+    input$wl
+  }) |> shiny::debounce(dbounce)
+  gamma_react = reactive({
+    input$gamma
+  }) |> shiny::debounce(dbounce)
+  filter_react = reactive({
+    input$filter
+  }) |> shiny::debounce(dbounce)
+  
   # function for grey scale
   grey_palette <- function(n) {
     x_gamma <- seq(
-      from = 1^input$gamma, 
+      from = 1^gamma_react(), 
       to = 0, 
-      length = n)^(1/input$gamma)
+      length = n)^(1/gamma_react())
     gray(x_gamma)
   }
   # grey_palette <- function(n) {
@@ -89,7 +111,7 @@ server <- function(input, output) {
   #   sigmoid <- function(x, k) {
   #     1 / (1 + exp(-k * (x - 0.5)))
   #   }
-  #   vals <- -1 * sigmoid(x, input$gamma) + 1
+  #   vals <- -1 * sigmoid(x, gamma_react()) + 1
   #   gray(vals)
   # }
   
@@ -119,6 +141,11 @@ server <- function(input, output) {
     writeWave(wav, "www/tmp.wav", extensible=FALSE)
   }
 
+  # to avoid that older files are used...
+  if("tmp.wav" %in% list.files(file.path(getwd(), "www"))) {
+    file.remove("www/tmp.wav")
+  }
+  
   # sound player ####
   output$playwav <- renderUI({
     if (is.null(input$wav$datapath))
@@ -141,21 +168,21 @@ server <- function(input, output) {
     wav <- readWave("www/tmp.wav")
     
     # filter the stuff
-    w <- ffilter(wav, from=input$filter*1000)
+    w <- ffilter(wav, from = filter_react()*1000)
     
     # time axis adjustment in case of short recordings
     maxx <- length(wav@left)/wav@samp.rate
-    if ( maxx < (input$timestart + input$duration) ) {
-      limt <- c(input$timestart, maxx-0.05)
+    if ( maxx < (timestart_react() + duration_react()) ) {
+      limt <- c(timestart_react(), maxx-0.05)
     } else {
-      limt <- c(input$timestart, input$timestart+input$duration)
+      limt <- c(timestart_react(), timestart_react()+duration_react())
     }
 
     # make spectrogram
     spectro(
       w, 
       f = 44100, 
-      wl = input$wl,
+      wl = wl_react(),
       ovlp = 50, 
       zp = 50,
       collevels = seq(-65, -0, 1), 
@@ -168,7 +195,7 @@ server <- function(input, output) {
     abline(h = seq(1, 19, 1), col = 2, lty = 3)
   })
   
-  # export sonogram ####
+  # export sonogram as JPEG ####
   output$downloadPlot <- downloadHandler(
     filename = function() { paste0("sonogram.jpeg") },
     content = function(file) {
@@ -178,13 +205,13 @@ server <- function(input, output) {
       wav <- readWave("www/tmp.wav")
       
       # filter stuff
-      w <- ffilter(wav, from=input$filter*1000)
+      w <- ffilter(wav, from = filter_react()*1000)
       # time axis adjustment in case of short recordings
       maxx <- length(wav@left)/wav@samp.rate
-      if ( maxx < (input$timestart+input$duration) ) {
-        limt <- c(input$timestart, maxx-0.05)
+      if ( maxx < (timestart_react()+duration_react()) ) {
+        limt <- c(timestart_react(), maxx-0.05)
       } else {
-        limt <- c(input$timestart, input$timestart+input$duration)
+        limt <- c(timestart_react(), timestart_react()+duration_react())
       }
       
       jpeg(
@@ -199,7 +226,7 @@ server <- function(input, output) {
       spectro(
         w, 
         f = 44100,
-        wl = input$wl, 
+        wl = wl_react(), 
         ovlp = 50, 
         zp = 50,
         collevels=seq(-65,-0,1), 
@@ -209,6 +236,7 @@ server <- function(input, output) {
         scale = FALSE)
 
       abline(h=seq(1,19,1), col=2, lty=3)
+      
       dev.off()
       },
     contentType = 'image/jpeg'
